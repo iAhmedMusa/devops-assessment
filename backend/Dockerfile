@@ -1,21 +1,28 @@
-FROM python:3.11-slim
+# Required environment variables:
+#   DATABASE_URL      e.g. postgresql+asyncpg://user:pass@db:5432/appdb
+#   FRONTEND_ORIGINS  comma-separated list of allowed CORS origins
+FROM python:3.12-slim AS builder
 
 WORKDIR /app
 
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt .
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
-COPY . /app
+FROM python:3.12-slim AS runner
 
-ENV PYTHONUNBUFFERED=1
+RUN groupadd --system --gid 1001 appuser \
+    && useradd --system --uid 1001 --gid appuser appuser
 
-# Required environment variables (the app enforces these at startup). Provide them at runtime, e.g. with
-#   docker run -e MONGO_URI=... -e DB_NAME=... -e FRONTEND_ORIGINS=...
-# - MONGO_URI: MongoDB connection string
-# - DB_NAME: database name to use
-# - FRONTEND_ORIGINS: comma-separated allowed CORS origins (e.g. "http://localhost:3000")
-ENV MONGO_URI=
-ENV DB_NAME=
-ENV FRONTEND_ORIGINS=
+WORKDIR /app
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3001"]
+COPY --from=builder /install /usr/local
+COPY app ./app
+
+USER appuser
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')" || exit 1
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
