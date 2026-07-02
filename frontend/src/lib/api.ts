@@ -1,10 +1,8 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
 class ApiClient {
   private baseUrl: string;
 
   constructor() {
-    this.baseUrl = `${API_URL}/api`;
+    this.baseUrl = "/api";
   }
 
   async get<T>(endpoint: string): Promise<T> {

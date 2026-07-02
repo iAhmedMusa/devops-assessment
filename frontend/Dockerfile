@@ -1,23 +1,37 @@
-FROM node:lts-alpine
+# Required runtime environment variables:
+#   BACKEND_URL   e.g. http://backend:8080 — server-side only, consumed by
+#                 next.config.ts rewrites(); never baked into the client bundle.
+FROM node:20-alpine AS base
 
+FROM base AS deps
+RUN apk add --no-cache libc6-compat
 WORKDIR /app
-
-COPY package*.json ./
+COPY package.json package-lock.json ./
 RUN npm ci
 
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN npm run build
 
-# Required runtime environment variables. Provide them when running the container (eg. with
-#   docker run -e NEXT_PUBLIC_API_URL='http://api:3001' -e NODE_ENV=production <image>) or via docker-compose env_file.
-# Note: For Next.js, variables prefixed with `NEXT_PUBLIC_` are exposed to the browser. If you build the app for production
-# they should be provided at build-time or injected into the running server depending on your deployment strategy.
-# - NEXT_PUBLIC_API_URL: URL for the API (e.g. "http://api:3001")
-# - NODE_ENV: 'development' or 'production'
-# - PORT: port to run the app/server
-ENV NEXT_PUBLIC_API_URL=
-ENV NODE_ENV=development
+FROM base AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+RUN addgroup --system --gid 1001 nodejs \
+    && adduser --system --uid 1001 nextjs
+
+COPY --from=builder /app/public ./public
+RUN mkdir .next && chown nextjs:nodejs .next
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
+
+EXPOSE 3000
 ENV PORT=3000
 
-EXPOSE ${PORT}
-
-CMD ["npm", "run", "dev"]
+CMD ["node", "server.js"]
