@@ -1,0 +1,8 @@
+fastapi[all]==0.95.2
+uvicorn[standard]==0.22.0
+# Use motor 3.x and pin a compatible pymongo
+motor==3.7.1
+pymongo==4.9.1
+pydantic[email]==1.10.12
+python-dotenv==1.1.0
+python-multipart==0.0.6
