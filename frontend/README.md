@@ -2,6 +2,8 @@
 
 A modern, responsive user profile management interface built with Next.js 16, React 19, TypeScript, and Tailwind CSS. This frontend application provides a seamless interface for creating, reading, updating, and deleting user profiles.
 
+Part of the `devops-assessment` monorepo — see the root [README.md](../README.md) for full-stack setup with Docker Compose.
+
 ## Features
 
 - **Modern UI/UX**: Built with Next.js 16 and React 19 for optimal performance
@@ -11,11 +13,11 @@ A modern, responsive user profile management interface built with Next.js 16, Re
 - **Real-time Updates**: Instant UI updates after data mutations
 - **Form Validation**: Client-side validation with React Hook Form and Zod
 - **Beautiful Components**: Pre-built UI components using Radix UI primitives
-- **Docker Support**: Containerized deployment ready
+- **Docker Support**: Containerized deployment ready (standalone production build)
 
 ## Tech Stack
 
-- **Framework**: Next.js 16.1.4 (App Router)
+- **Framework**: Next.js 16.1.4 (App Router, `output: "standalone"`)
 - **Language**: TypeScript 5
 - **Styling**: Tailwind CSS 4
 - **UI Components**: Radix UI + shadcn/ui
@@ -27,65 +29,43 @@ A modern, responsive user profile management interface built with Next.js 16, Re
 ## Prerequisites
 
 - Node.js 20+ (LTS recommended)
-- npm or yarn
+- npm
 - Docker (optional, for containerized deployment)
 
 ## Getting Started
 
 ### Local Development
 
-1. **Clone the repository**:
-
-   ```bash
-   git clone https://github.com/iAhmedMusa/cloudflow-frontend.git
-   cd frontapp
-   ```
-
-2. **Install dependencies**:
+1. **Install dependencies**:
 
    ```bash
    npm install
    ```
 
-3. **Set up environment variables**:
-   Create a `.env` file in the root directory:
-
-   ```env
-   NEXT_PUBLIC_API_URL=http://localhost:3001
-   ```
-
-4. **Run the development server**:
+2. **Run the development server**:
 
    ```bash
    npm run dev
    ```
 
-5. **Open your browser**:
+3. **Open your browser**:
    Navigate to [http://localhost:3000](http://localhost:3000)
 
-### Docker Development
+   In local dev without the backend running behind a rewrite, API calls to `/api/*` will 404 — run the full stack via Docker Compose (root README) or point a dev proxy at a running backend.
 
-1. **Build the Docker image**:
+### Docker
 
-   ```bash
-   docker build -t cloudflow-frontend .
-   ```
+The frontend ships a single production multi-stage `Dockerfile` (deps → builder → runner, `node:20-alpine`, non-root user). It requires `BACKEND_URL` at runtime (see below) — build and run it directly, or via the root `docker-compose.yml` (recommended):
 
-2. **Run the container**:
-
-   ```bash
-   docker run -d -p 3000:3000 -e NEXT_PUBLIC_API_URL=http://localhost:3001 cloudflow-frontend
-   ```
-
-3. **Using Docker Compose** (with backend):
-   ```bash
-   docker compose up -d
-   ```
+```bash
+docker build -t cloudflow-frontend .
+docker run -d -p 3000:3000 -e BACKEND_URL=http://backend:8080 cloudflow-frontend
+```
 
 ## Project Structure
 
 ```
-frontapp/
+frontend/
 ├── src/
 │   ├── app/              # Next.js App Router pages
 │   │   ├── page.tsx      # Main dashboard (User Profile Management)
@@ -95,32 +75,32 @@ frontapp/
 │   │   ├── ui/          # shadcn/ui components
 │   │   └── file-upload.tsx
 │   ├── lib/             # Utility functions
-│   │   ├── api.ts       # API client for backend communication
+│   │   ├── api.ts       # API client (calls relative "/api", proxied server-side)
 │   │   └── utils.ts     # Helper utilities
 │   └── types/           # TypeScript type definitions
 │       └── index.ts     # User profile types
 ├── public/              # Static assets
-├── Dockerfile           # Docker configuration
-├── next.config.ts       # Next.js configuration
+├── Dockerfile           # Production multi-stage build
+├── next.config.ts       # output: "standalone" + /api/:path* rewrite to BACKEND_URL
 ├── package.json         # Dependencies and scripts
-└── tsconfig.json       # TypeScript configuration
+└── tsconfig.json        # TypeScript configuration
 ```
 
 ## API Integration
 
-The frontend communicates with the CloudFlow backend API. The API client (`src/lib/api.ts`) handles all HTTP requests to the backend service.
+The frontend never calls the backend directly from the browser. `src/lib/api.ts` issues requests to the relative path `/api`, and `next.config.ts` rewrites `/api/:path*` server-side to `${BACKEND_URL}/api/:path*`. This keeps the backend's network location a server-side runtime concern — see the root README's "Design decisions" section for why.
 
 ### Environment Variables
 
-| Variable              | Description      | Default                 |
-| --------------------- | ---------------- | ----------------------- |
-| `NEXT_PUBLIC_API_URL` | Backend API URL  | `http://localhost:3001` |
-| `NODE_ENV`            | Environment mode | `development`           |
-| `PORT`                | Server port      | `3000`                  |
+| Variable      | Description                                             | Default |
+| ------------- | --------------------------------------------------------- | ------- |
+| `BACKEND_URL` | Backend base URL for the Next.js rewrite (server-side only, **not** `NEXT_PUBLIC_*`) | none — required at build and runtime |
+| `NODE_ENV`    | Environment mode                                          | `production` (set in Dockerfile) |
+| `PORT`        | Server port                                                | `3000`  |
 
 ### API Endpoints
 
-The frontend consumes the following API endpoints:
+The frontend consumes the following backend endpoints (proxied through `/api`):
 
 - `GET /api/profiles` - Fetch all user profiles
 - `POST /api/profiles` - Create a new profile
@@ -134,59 +114,17 @@ The frontend consumes the following API endpoints:
 - `npm run start` - Start production server
 - `npm run lint` - Run ESLint
 
-## Docker Deployment
+## Full Stack Setup
 
-### Building for Production
+This app is meant to run alongside the `backend/` FastAPI service and a PostgreSQL database, orchestrated by the root `docker-compose.yml`:
 
 ```bash
-# Build the image
-docker build -t yourusername/cloudflow-frontend:latest .
-
-# Run with production API URL
-docker run -d \
-  -p 3000:3000 \
-  -e NEXT_PUBLIC_API_URL=http://api:3001 \
-  -e NODE_ENV=production \
-  yourusername/cloudflow-frontend:latest
+cd ..
+cp .env.example .env
+docker compose up -d --build
 ```
 
-### Docker Compose
-
-The frontend is designed to work seamlessly with the CloudFlow backend using Docker Compose. See the main `cloudflow-compose.yml` in the project root for the complete setup.
-
-## Backend Integration
-
-This frontend is designed to work with the [CloudFlow Backend](https://github.com/iAhmedMusa/cloudflow_api). The backend provides:
-
-- RESTful API for user profile management
-- MongoDB database integration
-- Express.js server
-- Full CRUD operations
-
-### Full Stack Setup
-
-1. Clone both repositories:
-
-   ```bash
-   # Backend
-   git clone https://github.com/iAhmedMusa/cloudflow_api.git
-
-   # Frontend
-   git clone https://github.com/iAhmedMusa/cloudflow-frontend.git
-   ```
-
-2. Use Docker Compose to run the entire stack:
-   ```bash
-   docker compose -f cloudflow-compose.yml up -d
-   ```
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+See the root [README.md](../README.md) for architecture, verification steps, and the full environment variable reference.
 
 ## License
 
