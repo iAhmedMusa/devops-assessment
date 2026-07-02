@@ -6,13 +6,19 @@ os.environ.setdefault("FRONTEND_ORIGINS", "http://localhost:3000")
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_session
 from app.main import app
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
-test_engine = create_async_engine(TEST_DATABASE_URL, future=True)
+test_engine = create_async_engine(
+    TEST_DATABASE_URL,
+    future=True,
+    poolclass=StaticPool,
+    connect_args={"check_same_thread": False},
+)
 TestSessionLocal = async_sessionmaker(test_engine, expire_on_commit=False)
 
 

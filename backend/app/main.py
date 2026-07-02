@@ -140,7 +140,7 @@ async def update_profile(
     changed = False
     for key, value in data.items():
         column = FIELD_MAP[key]
-        if key in ("fullName", "email") and value is None:
+        if key in ("fullName", "email", "isActive") and value is None:
             continue
         if getattr(profile, column) != value:
             setattr(profile, column, value)

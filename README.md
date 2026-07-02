@@ -53,4 +53,7 @@ proxies through a Next.js rewrite so `BACKEND_URL` stays a server-side
 runtime variable, never baked into the client bundle. This keeps the
 backend's network location swappable without a frontend rebuild, and lets
 the backend run as an internal-only (ClusterIP) service once this stack
-moves to Kubernetes in a later phase.
+moves to Kubernetes in a later phase. The backend's `8080` host-port
+mapping in `docker-compose` is only a local-verification convenience for
+this phase and would drop away entirely (no host port, ClusterIP-only)
+once the Kubernetes phase lands.
