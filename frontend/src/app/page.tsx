@@ -340,7 +340,7 @@ export default function Home() {
                                 </AlertDialogTitle>
                                 <AlertDialogDescription>
                                   Are you sure you want to delete the profile of
-                                  "{profile.fullName}"? This action cannot be
+                                  &quot;{profile.fullName}&quot;? This action cannot be
                                   undone.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
