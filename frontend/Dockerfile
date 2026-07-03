@@ -1,6 +1,3 @@
-# Required runtime environment variables:
-#   BACKEND_URL   e.g. http://backend:8080 — server-side only, consumed by
-#                 next.config.ts rewrites(); never baked into the client bundle.
 FROM node:20-alpine AS base
 
 FROM base AS deps
@@ -14,9 +11,13 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-# BACKEND_URL must be a valid URL at build time because `next build`
-# validates rewrites() destinations. Default matches the runtime value set
-# in docker-compose.yml; override with --build-arg if needed elsewhere.
+# NOTE: output "standalone" serializes next.config.ts at BUILD time.
+# The rewrite destination below is baked into the image permanently;
+# setting BACKEND_URL at runtime has NO effect on rewrites.
+# We deliberately pin the backend's DNS name to "backend" in every
+# environment (docker-compose service name now, Kubernetes Service
+# name later), so the baked value is always correct.
+# Changing the backend address requires rebuilding this image.
 ARG BACKEND_URL=http://backend:8080
 ENV BACKEND_URL=${BACKEND_URL}
 RUN npm run build
