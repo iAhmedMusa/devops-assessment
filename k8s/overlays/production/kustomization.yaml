@@ -20,8 +20,8 @@ patches:
 # CI updates the tag below during deploy (next phase) -- never "latest".
 images:
   - name: PLACEHOLDER/devops-assessment-backend
-    newName: iahmedmusa/devops-assessment-backend
+    newName: ahmedmusa/devops-assessment-backend
     newTag: "0.1.0"
   - name: PLACEHOLDER/devops-assessment-frontend
-    newName: iahmedmusa/devops-assessment-frontend
+    newName: ahmedmusa/devops-assessment-frontend
     newTag: "0.1.0"
