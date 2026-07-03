@@ -44,16 +44,32 @@ No database needs to be running — tests use an in-memory SQLite override.
 | db       | POSTGRES_DB       | appdb                                                  | from `.env`                         |
 | backend  | DATABASE_URL      | postgresql+asyncpg://appuser:change-me@db:5432/appdb   | composed by compose from `.env`     |
 | backend  | FRONTEND_ORIGINS  | http://localhost:3000                                  | comma-separated CORS origins        |
-| frontend | BACKEND_URL       | http://backend:8080                                    | server-side only, used by rewrites  |
+| frontend | BACKEND_URL       | http://backend:8080                                    | build-arg only — baked into the image at `docker build` time, see below |
 
 ## Design decisions
 
-The frontend never calls the backend directly from the browser. Instead it
-proxies through a Next.js rewrite so `BACKEND_URL` stays a server-side
-runtime variable, never baked into the client bundle. This keeps the
-backend's network location swappable without a frontend rebuild, and lets
-the backend run as an internal-only (ClusterIP) service once this stack
-moves to Kubernetes in a later phase. The backend's `8080` host-port
-mapping in `docker-compose` is only a local-verification convenience for
-this phase and would drop away entirely (no host port, ClusterIP-only)
-once the Kubernetes phase lands.
+### Frontend-to-backend routing (build-time rewrite)
+
+The browser only ever calls relative `/api/*` paths on the frontend. Next.js
+forwards those requests server-side to the backend via a `rewrites()` rule,
+so the backend never needs to be reachable from the browser directly and can
+run as an internal-only (ClusterIP) service once this stack moves to
+Kubernetes.
+
+With `output: "standalone"`, `next.config.ts` is serialized at **build**
+time. The rewrite destination is fixed into the built image the moment
+`next build` runs — setting `BACKEND_URL` at container runtime has no effect
+on it.
+
+Convention: the backend is reachable as `http://backend:8080` in every
+environment — that's the docker-compose service name today, and the
+Kubernetes Service will also be named `backend` when that phase lands (a
+constraint to carry forward, not just a default).
+
+Trade-off, stated plainly: if the backend's address ever changes, this image
+must be rebuilt — there is no runtime knob. The alternative we considered
+was a per-request route-handler proxy (an `app/api/[...path]/route.ts` that
+reads `BACKEND_URL` at request time instead of at build time), which would
+support a true runtime override. We chose the simpler build-time convention
+instead because the backend's address is stable across every environment
+this project targets, so the extra proxy layer isn't earning its keep.
