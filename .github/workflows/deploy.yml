@@ -196,27 +196,56 @@ jobs:
             - `${{ secrets.DOCKERHUB_USERNAME }}/devops-assessment-frontend:${{ needs.build-and-push.outputs.sha }}`
 
   # MOCK JOB — no Kubernetes cluster exists yet. This echoes the commands
-  # a real deploy would run so the job graph and gating are already in
-  # place when the k8s manifests land.
-  deploy:
-    name: "[MOCK] Deploy"
+  # a real staging deploy would run so the job graph and gating are
+  # already in place when the k8s manifests land.
+  deploy-staging:
+    name: "[MOCK] Deploy to staging"
     needs: [release, build-and-push]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    environment: staging
     steps:
-      - name: Mock deploy
+      - name: Mock deploy to staging
         env:
           VERSION: ${{ needs.build-and-push.outputs.version }}
         run: |
           echo "MOCK ONLY — no cluster is configured, nothing below is executed."
           echo
-          echo "kubectl set image deployment/backend backend=${{ secrets.DOCKERHUB_USERNAME }}/devops-assessment-backend:${VERSION}"
-          echo "kubectl set image deployment/frontend frontend=${{ secrets.DOCKERHUB_USERNAME }}/devops-assessment-frontend:${VERSION}"
-          echo "kubectl rollout status deployment/backend"
-          echo "kubectl rollout status deployment/frontend"
+          echo "kubectl set image deployment/backend backend=${{ secrets.DOCKERHUB_USERNAME }}/devops-assessment-backend:${VERSION} -n staging"
+          echo "kubectl set image deployment/frontend frontend=${{ secrets.DOCKERHUB_USERNAME }}/devops-assessment-frontend:${VERSION} -n staging"
+          echo "kubectl rollout status deployment/backend -n staging"
+          echo "kubectl rollout status deployment/frontend -n staging"
 
-      # A kind-cluster integration deploy job will be added when the k8s
-      # manifests land (next phase). The real-world equivalent for a
-      # managed cluster is azure/k8s-deploy or kubectl against AKS/EKS,
-      # authenticated via OIDC (no stored cloud keys) and gated by a
-      # GitHub environment with required reviewers for production.
+      # A kind-cluster integration deploy job will replace this mock when
+      # the k8s manifests land (next phase). The real-world equivalent for
+      # a managed cluster is azure/k8s-deploy or kubectl against AKS/EKS,
+      # authenticated via OIDC (no stored cloud keys).
+
+  # MOCK JOB — promotes the SAME immutable image tags built above into
+  # production; no rebuild happens between environments. The pause for
+  # manual approval before this job starts is not expressed anywhere in
+  # this YAML — it comes entirely from the "production" GitHub environment
+  # having a required-reviewer protection rule configured in repo settings.
+  deploy-production:
+    name: "[MOCK] Deploy to production"
+    needs: [deploy-staging, build-and-push]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Mock deploy to production
+        env:
+          VERSION: ${{ needs.build-and-push.outputs.version }}
+        run: |
+          echo "MOCK ONLY — no cluster is configured, nothing below is executed."
+          echo
+          echo "kubectl set image deployment/backend backend=${{ secrets.DOCKERHUB_USERNAME }}/devops-assessment-backend:${VERSION} -n production"
+          echo "kubectl set image deployment/frontend frontend=${{ secrets.DOCKERHUB_USERNAME }}/devops-assessment-frontend:${VERSION} -n production"
+          echo "kubectl rollout status deployment/backend -n production"
+          echo "kubectl rollout status deployment/frontend -n production"
+
+      # A kind-cluster integration deploy job will replace this mock when
+      # the k8s manifests land (next phase). The real-world equivalent for
+      # a managed cluster is azure/k8s-deploy or kubectl against AKS/EKS,
+      # authenticated via OIDC (no stored cloud keys) and gated by the
+      # GitHub environment's required-reviewer rule for production.
