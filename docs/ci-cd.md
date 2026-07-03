@@ -16,14 +16,17 @@ flowchart LR
         B2[test-frontend] --> B3
         B3 --> B4["[MOCK] mock-ecr-push"]
         B3 --> B5[release]
-        B5 --> B6["[MOCK] deploy"]
+        B5 --> B6["[MOCK] deploy-staging"]
+        B6 --> G{{"manual approval\n(production environment)"}}
+        G --> B7["[MOCK] deploy-production"]
     end
 ```
 
 Opening a pull request runs the two test jobs only — nothing is built,
 pushed, or released. Pushing a `v*.*.*` tag runs the full chain: tests gate
 the build, the build gates both the mock ECR push and the GitHub release,
-and the release gates the mock deploy.
+the release gates a staging deploy, and staging gates a production deploy
+that pauses for manual approval.
 
 ## 2. Trigger model
 
@@ -96,3 +99,38 @@ credential.
 **What must never be in the repo:** `.env` files, kubeconfig, cloud access
 keys, or Terraform state. All of these are excluded via `.gitignore` and
 must stay that way even as the pipeline grows.
+
+## 6. Branching and promotion strategy
+
+**Model:** trunk-based development. `main` is the single long-lived branch;
+all work happens on short-lived feature branches merged in via PR. `main`
+is protected — a PR with green checks is required, and force-pushes are not
+allowed.
+
+**Promotion is by artifact, not by branch.** A `v*.*.*` tag builds one
+immutable pair of images (semver + SHA, see above). Those exact images are
+promoted from staging to production — `deploy-staging` and
+`deploy-production` deploy the same tags; nothing is rebuilt between
+environments. If it passed in staging, what reaches production is the
+identical binary, not a recompiled approximation of it.
+
+**Production gating:** the `deploy-production` job declares
+`environment: production`, and that GitHub environment has a
+required-reviewer rule configured in repo settings. The pause for manual
+approval before production is not expressed anywhere in the workflow YAML
+— it's enforced entirely by that environment protection rule.
+
+**Why not environment branches** (separate `dev`/`staging`/`prod` branches,
+GitFlow-style): merging as the promotion mechanism lets branches drift out
+of sync with each other, duplicates the work of applying hotfixes to every
+downstream branch, and makes "what's actually running in production" a
+question you answer by diffing branches instead of just reading a tag.
+Worse, rebuilding per branch breaks artifact immutability — a "prod build"
+and a "staging build" of the same commit are no longer guaranteed to be the
+same bytes. Trunk-based development with immutable artifacts and
+environment-level gates avoids all of that, and lines up with where the
+industry has been heading (DORA, GitOps).
+
+**Infrastructure-level environment separation** (dedicated dev/staging/prod
+clusters, isolated state) is a different concern from this promotion flow
+and is handled — and documented — in the Terraform phase.

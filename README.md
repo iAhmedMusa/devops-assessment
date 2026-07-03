@@ -53,9 +53,11 @@ No database needs to be running — tests use an in-memory SQLite override.
 Pull requests run the backend and frontend test suites only. Pushing a
 `v*.*.*` tag runs the full pipeline: tests, build and push to Docker Hub
 with a Trivy vulnerability scan, a clearly-labeled mock ECR push, a GitHub
-release, and a clearly-labeled mock Kubernetes deploy. See
-[docs/ci-cd.md](docs/ci-cd.md) for the trigger model, image tagging policy,
-registry strategy, and secrets management.
+release, and a clearly-labeled mock Kubernetes deploy. Releases promote the
+same immutable images through staging to production behind a manual
+approval gate; see [docs/ci-cd.md](docs/ci-cd.md) for the trigger model,
+image tagging policy, registry strategy, secrets management, and
+branching/promotion strategy.
 
 ## Design decisions
 
