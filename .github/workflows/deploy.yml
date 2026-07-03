@@ -68,7 +68,7 @@ jobs:
   build-and-push:
     name: Build and push images
     needs: [test-backend, test-frontend]
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: success() && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.tags.outputs.version }}
@@ -146,7 +146,7 @@ jobs:
   mock-ecr-push:
     name: "[MOCK] Push to ECR"
     needs: build-and-push
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: success() && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
       - name: Mock ECR push
@@ -176,7 +176,7 @@ jobs:
   release:
     name: Create GitHub release
     needs: build-and-push
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: success() && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -201,7 +201,7 @@ jobs:
   deploy-staging:
     name: "[MOCK] Deploy to staging"
     needs: [release, build-and-push]
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: success() && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     environment: staging
     steps:
@@ -229,7 +229,7 @@ jobs:
   deploy-production:
     name: "[MOCK] Deploy to production"
     needs: [deploy-staging, build-and-push]
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: success() && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     environment: production
     steps:
