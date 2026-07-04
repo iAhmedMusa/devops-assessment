@@ -55,11 +55,15 @@ resource "aws_eks_cluster" "this" {
 }
 
 resource "aws_eks_node_group" "default" {
-  cluster_name    = aws_eks_cluster.this.name
-  node_group_name = "${var.name_prefix}-default"
-  node_role_arn   = aws_iam_role.node.arn
-  subnet_ids      = var.private_app_subnet_ids
-  instance_types  = [var.node_instance_type]
+  cluster_name = aws_eks_cluster.this.name
+  # Prefix, not a fixed name: create_before_destroy (below) stands up the
+  # replacement group while the old one still exists, and two node groups
+  # cannot share a name -- a static node_group_name would deadlock every
+  # forced replacement at the AWS API.
+  node_group_name_prefix = "${var.name_prefix}-default-"
+  node_role_arn          = aws_iam_role.node.arn
+  subnet_ids             = var.private_app_subnet_ids
+  instance_types         = [var.node_instance_type]
 
   scaling_config {
     desired_size = var.node_desired_size
