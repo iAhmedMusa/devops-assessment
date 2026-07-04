@@ -69,6 +69,7 @@ branching/promotion strategy.
 | Private database connectivity (task 4) | [docs/database-connectivity.md](docs/database-connectivity.md) |
 | Troubleshooting (15 real-world scenarios) | [docs/troubleshooting.md](docs/troubleshooting.md) |
 | Future improvements (production hardening) | [docs/future-improvements.md](docs/future-improvements.md) |
+| Proof of work (screenshots, terraform plan) | [docs/proof.md](docs/proof.md) |
 
 ## Design decisions
 
