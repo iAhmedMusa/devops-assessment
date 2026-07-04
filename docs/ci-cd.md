@@ -16,7 +16,7 @@ flowchart LR
         B2[test-frontend] --> B3
         B3 --> B4["[MOCK] mock-ecr-push"]
         B3 --> B5[release]
-        B5 --> B6["[MOCK] deploy-staging"]
+        B5 --> B6["deploy-staging (kind)"]
         B6 --> G{{"manual approval\n(production environment)"}}
         G --> B7["[MOCK] deploy-production"]
     end
@@ -25,8 +25,25 @@ flowchart LR
 Opening a pull request runs the two test jobs only — nothing is built,
 pushed, or released. Pushing a `v*.*.*` tag runs the full chain: tests gate
 the build, the build gates both the mock ECR push and the GitHub release,
-the release gates a staging deploy, and staging gates a production deploy
-that pauses for manual approval.
+the release gates a real staging deploy, and staging gates a production
+deploy that pauses for manual approval.
+
+**`deploy-staging` is a real deploy**, not a mock: it stands up an ephemeral
+single-node kind cluster inside the runner, installs ingress-nginx, applies
+`k8s/overlays/ci` with the images `kustomize edit set image` just pinned to
+this release's version, waits for both rollouts, then runs two smoke
+tests — an in-cluster `wget` of the backend's `/health` from inside the
+frontend pod, and a `curl` of the ingress host from the runner. On any
+failure it dumps `kubectl get pods`, `describe`, and both deployments' logs
+before exiting nonzero. The cluster is destroyed with the job; it exists
+only to prove the manifests and the just-built images come up together on
+every release, not to serve traffic. Swapping in a persistent managed
+cluster (AKS/EKS) later means replacing the kind-create step with a kubectl
+context switch authenticated via OIDC — the rest of the job is unchanged.
+
+`deploy-production` stays a mock: no real production cluster exists yet,
+and the job's purpose today is proving the required-reviewer gate on the
+`production` GitHub environment, not the deploy mechanics.
 
 ## 2. Trigger model
 
