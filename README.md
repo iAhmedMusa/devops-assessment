@@ -82,3 +82,4 @@ No database needed — tests use an in-memory SQLite override.
 | Private database connectivity | [docs/database-connectivity.md](docs/database-connectivity.md) |
 | Troubleshooting | [docs/troubleshooting.md](docs/troubleshooting.md) |
 | Future improvements | [docs/future-improvements.md](docs/future-improvements.md) |
+| Proof of work | [docs/proof.md](docs/proof.md) |
