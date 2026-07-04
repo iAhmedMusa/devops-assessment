@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: devops-assessment-ci
+
+resources:
+  - namespace.yaml
+  - ../../base
+
+# Mirrors overlays/staging. The tag below is a placeholder only -- the
+# deploy-staging job overwrites it at run time with `kustomize edit set
+# image`, pinning the exact version just built and pushed.
+images:
+  - name: PLACEHOLDER/devops-assessment-backend
+    newName: ahmedmusa/devops-assessment-backend
+    newTag: "0.1.2"
+  - name: PLACEHOLDER/devops-assessment-frontend
+    newName: ahmedmusa/devops-assessment-frontend
+    newTag: "0.1.2"
