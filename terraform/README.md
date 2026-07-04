@@ -228,7 +228,7 @@ force-replaced (`-/+` in the plan, not `~`):
 - `terraform plan -var-file=envs/dev.tfvars` (and `staging`/`production`)
   — **passes**, with `AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test`
   placeholder credentials and no real AWS account reachable. Produces a
-  coherent 58-resource create plan for `dev`, 0 changes, 0 destroys.
+  coherent 59-resource create plan for `dev`, 0 changes, 0 destroys.
 - `tflint --recursive` (with the `aws` ruleset plugin) — **passes**, zero
   findings.
 - **This configuration has never been applied, and no AWS account has
