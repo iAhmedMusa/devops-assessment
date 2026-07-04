@@ -2,40 +2,53 @@
 
 [![CI/CD](https://github.com/iAhmedMusa/devops-assessment/actions/workflows/deploy.yml/badge.svg)](https://github.com/iAhmedMusa/devops-assessment/actions/workflows/deploy.yml)
 
-User profile manager: Next.js frontend, FastAPI backend, PostgreSQL database, all containerized.
+User profile manager — Next.js frontend, FastAPI backend, PostgreSQL database, all containerized and deployable to Kubernetes.
 
-## Architecture
+```
+browser --> frontend:3000 --> backend:8080 --> postgres:5432
+```
 
-    browser --> frontend:3000 --[Next.js rewrite /api/*]--> backend:8080 --> postgres:5432
+## Quick start
 
-The browser only ever talks to the frontend container. The frontend forwards
-`/api/*` requests server-side to the backend using a Next.js rewrite rule.
+```bash
+cp .env.example .env
+docker compose up -d --build
 
-## Prerequisites
+curl http://localhost:8080          # "Application is running"
+curl http://localhost:8080/health   # {"status":"ok"}
+```
 
-- Docker and Docker Compose
+Open http://localhost:3000 to create, edit, and delete profiles.
 
-## Run
+## What was built (task by task)
 
-    cp .env.example .env
-    docker compose up -d --build
+### Task 1 — The app
 
-## Verify
+Two independent services in separate Docker containers, started with one command. The frontend serves a profile management UI; the backend exposes `GET /` and `GET /health` plus a full CRUD API for profiles. PostgreSQL stores the data in a named volume. See [`backend/`](backend/) and [`frontend/`](frontend/) for details.
 
-    curl http://localhost:8080          # "Application is running"
-    curl http://localhost:8080/health   # {"status":"ok"}
+### Task 2 — CI/CD pipeline
 
-Open http://localhost:3000 and create/edit/delete a profile. Data persists
-across `docker compose restart backend` because Postgres uses a named volume.
+A GitHub Actions workflow that runs on every PR (tests only) and on `v*.*.*` tags (full pipeline: test, build multi-arch images, push to Docker Hub, Trivy vulnerability scan, GitHub release, real staging deploy on an ephemeral kind cluster, mock production deploy behind a manual approval gate). Secrets live in GitHub Secrets; production cloud auth uses OIDC federation, not stored keys. See [docs/ci-cd.md](docs/ci-cd.md).
 
-## Backend tests
+### Task 3 — Kubernetes manifests
 
-    cd backend
-    python3.12 -m venv .venv && source .venv/bin/activate
-    pip install -r requirements-dev.txt
-    pytest -v
+Kustomize-based manifests with base + overlays (local, staging, production, CI). Both frontend and backend run 2 replicas with readiness/liveness probes, resource requests/limits, pod disruption budgets, network policies (default-deny ingress), and pod hardening (non-root, read-only rootfs, drop ALL caps). The backend is ClusterIP (internal-only); only the frontend is exposed through an Ingress. Config comes from a ConfigMap; secrets are referenced via a placeholder (real values injected at deploy time). See [k8s/README.md](k8s/README.md).
 
-No database needs to be running — tests use an in-memory SQLite override.
+### Task 4 — Private database connectivity
+
+The backend reaches PostgreSQL without the database ever being reachable from the internet. The setup uses a three-tier VPC (public / private-app / private-db), security-group-to-security-group firewall rules (not CIDR), Kubernetes NetworkPolicy restricting port 5432 to backend pods only, and AWS Secrets Manager for credential storage — the master password never exists in Terraform code. See [docs/database-connectivity.md](docs/database-connectivity.md).
+
+### Task 5 — Infrastructure as code (Terraform)
+
+Five custom modules (network, EKS, ECR, RDS, monitoring) provisioning a production-grade AWS platform: three-tier VPC, EKS cluster with managed node group and IRSA, ECR repos with lifecycle policies, private RDS PostgreSQL, and CloudWatch monitoring. Separate tfvars and state keys for dev/staging/production. `prevent_destroy` on critical resources. Full upgrade, resize, and drift-recovery procedures documented. See [terraform/README.md](terraform/README.md).
+
+### Task 6 — Troubleshooting
+
+Fifteen real-world failure scenarios — pods crashing, app unreachable, SSL errors, pipeline failures, database timeouts, secrets leaked, Terraform drift — with practical diagnostic commands and root-cause patterns. See [docs/troubleshooting.md](docs/troubleshooting.md).
+
+### Task 7 — Future improvements
+
+Seven production hardening proposals: HPA autoscaling, GitOps with ArgoCD, canary deployments, centralized logging, image signing, OPA Gatekeeper policies, and multi-region disaster recovery. Each with what/why/how/risk-removed. See [docs/future-improvements.md](docs/future-improvements.md).
 
 ## Environment variables
 
@@ -46,54 +59,26 @@ No database needs to be running — tests use an in-memory SQLite override.
 | db       | POSTGRES_DB       | appdb                                                  | from `.env`                         |
 | backend  | DATABASE_URL      | postgresql+asyncpg://appuser:change-me@db:5432/appdb   | composed by compose from `.env`     |
 | backend  | FRONTEND_ORIGINS  | http://localhost:3000                                  | comma-separated CORS origins        |
-| frontend | BACKEND_URL       | http://backend:8080                                    | build-arg only — baked into the image at `docker build` time, see below |
+| frontend | BACKEND_URL       | http://backend:8080                                    | build-arg — baked into the image    |
 
-## CI/CD
+## Backend tests
 
-Pull requests run the backend and frontend test suites only. Pushing a
-`v*.*.*` tag runs the full pipeline: tests, build and push to Docker Hub
-with a Trivy vulnerability scan, a clearly-labeled mock ECR push, a GitHub
-release, and a clearly-labeled mock Kubernetes deploy. Releases promote the
-same immutable images through staging to production behind a manual
-approval gate; see [docs/ci-cd.md](docs/ci-cd.md) for the trigger model,
-image tagging policy, registry strategy, secrets management, and
-branching/promotion strategy.
+```bash
+cd backend
+python3.12 -m venv .venv && source .venv/bin/activate
+pip install -r requirements-dev.txt
+pytest -v
+```
+
+No database needed — tests use an in-memory SQLite override.
 
 ## Documentation
 
 | Topic | Doc |
 |-------|-----|
-| CI/CD pipeline (triggers, tagging, promotion) | [docs/ci-cd.md](docs/ci-cd.md) |
-| Kubernetes manifests & local deploy | [k8s/README.md](k8s/README.md) |
-| Terraform provisioning (EKS, ECR, RDS, monitoring) | [terraform/README.md](terraform/README.md) |
-| Private database connectivity (task 4) | [docs/database-connectivity.md](docs/database-connectivity.md) |
-| Troubleshooting (15 real-world scenarios) | [docs/troubleshooting.md](docs/troubleshooting.md) |
-| Future improvements (production hardening) | [docs/future-improvements.md](docs/future-improvements.md) |
-
-## Design decisions
-
-### Frontend-to-backend routing (build-time rewrite)
-
-The browser only ever calls relative `/api/*` paths on the frontend. Next.js
-forwards those requests server-side to the backend via a `rewrites()` rule,
-so the backend never needs to be reachable from the browser directly and can
-run as an internal-only (ClusterIP) service once this stack moves to
-Kubernetes.
-
-With `output: "standalone"`, `next.config.ts` is serialized at **build**
-time. The rewrite destination is fixed into the built image the moment
-`next build` runs — setting `BACKEND_URL` at container runtime has no effect
-on it.
-
-Convention: the backend is reachable as `http://backend:8080` in every
-environment — that's the docker-compose service name today, and the
-Kubernetes Service will also be named `backend` when that phase lands (a
-constraint to carry forward, not just a default).
-
-Trade-off, stated plainly: if the backend's address ever changes, this image
-must be rebuilt — there is no runtime knob. The alternative we considered
-was a per-request route-handler proxy (an `app/api/[...path]/route.ts` that
-reads `BACKEND_URL` at request time instead of at build time), which would
-support a true runtime override. We chose the simpler build-time convention
-instead because the backend's address is stable across every environment
-this project targets, so the extra proxy layer isn't earning its keep.
+| CI/CD pipeline | [docs/ci-cd.md](docs/ci-cd.md) |
+| Kubernetes manifests | [k8s/README.md](k8s/README.md) |
+| Terraform infrastructure | [terraform/README.md](terraform/README.md) |
+| Private database connectivity | [docs/database-connectivity.md](docs/database-connectivity.md) |
+| Troubleshooting | [docs/troubleshooting.md](docs/troubleshooting.md) |
+| Future improvements | [docs/future-improvements.md](docs/future-improvements.md) |

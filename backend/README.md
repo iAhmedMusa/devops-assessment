@@ -1,78 +1,54 @@
-# CloudFlow Backend
+# Backend
 
-A FastAPI-based REST API for managing user profiles, backed by PostgreSQL via SQLAlchemy 2.x async (asyncpg). Part of the `devops-assessment` monorepo — see the root [README.md](../README.md) for full-stack setup with Docker Compose.
+FastAPI REST API for user profiles, backed by PostgreSQL via SQLAlchemy 2.x async (asyncpg). Part of the `devops-assessment` monorepo — see the root [README.md](../README.md) for full-stack setup.
 
-## Description
+## Quick start
 
-CloudFlow Backend provides a robust API for user profile management, built with FastAPI and PostgreSQL. It supports full CRUD operations for user profiles with automatic timestamps and CORS configuration for frontend integration.
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
 
-## Features
+export DATABASE_URL="postgresql+asyncpg://appuser:change-me@localhost:5432/appdb"
+export FRONTEND_ORIGINS="http://localhost:3000"
 
-- **FastAPI** - Modern, fast web framework for building APIs
-- **PostgreSQL** - Relational database via SQLAlchemy 2.x async engine (asyncpg driver)
-- **CRUD Operations** - Create, Read, Update, Delete user profiles
-- **CORS Support** - Configurable cross-origin resource sharing
-- **Docker Ready** - Multi-stage, non-root production image
-- **Environment-based Config** - No hardcoded credentials; fails fast if required vars are missing
-- **Liveness endpoints** - `GET /` and `GET /health` (the latter never touches the database)
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8080
+```
 
-## Quick Start
+Or use Docker Compose from the repo root (recommended).
 
-1. **Install dependencies:**
-   ```bash
-   python -m venv .venv && source .venv/bin/activate
-   pip install -r requirements.txt
-   ```
-
-2. **Set environment variables:**
-   ```bash
-   export DATABASE_URL="postgresql+asyncpg://appuser:change-me@localhost:5432/appdb"
-   export FRONTEND_ORIGINS="http://localhost:3000"
-   ```
-
-3. **Run the application:**
-   ```bash
-   uvicorn app.main:app --reload --host 0.0.0.0 --port 8080
-   ```
-
-   In the Docker Compose stack (see root README) the app always runs on port `8080`.
-
-## API Endpoints
+## API endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/` | Liveness check — returns `"Application is running"` |
-| GET | `/health` | Liveness check — returns `{"status": "ok"}`; never touches the database |
-| POST | `/api/profiles` | Create a new profile |
+| GET | `/` | Returns `"Application is running"` |
+| GET | `/health` | Returns `{"status": "ok"}` — never touches the database |
+| POST | `/api/profiles` | Create a profile |
 | GET | `/api/profiles` | List all profiles |
-| GET | `/api/profiles/{id}` | Get a specific profile |
+| GET | `/api/profiles/{id}` | Get a profile |
 | PATCH | `/api/profiles/{id}` | Update a profile |
 | DELETE | `/api/profiles/{id}` | Delete a profile |
 
-## Environment Variables
+## Environment variables
 
-- `DATABASE_URL` - PostgreSQL connection string, e.g. `postgresql+asyncpg://user:pass@db:5432/appdb` (required)
-- `FRONTEND_ORIGINS` - Comma-separated allowed CORS origins (required)
+- `DATABASE_URL` — PostgreSQL connection string (required)
+- `FRONTEND_ORIGINS` — comma-separated allowed CORS origins (required)
 
-Both are validated at import time; the app raises a single `RuntimeError` listing every missing variable if either is unset. There are no hardcoded fallback credentials.
+Both are validated at import time. The app raises a `RuntimeError` listing every missing variable if either is unset.
 
 ## Tests
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
 pytest -v
 ```
 
-Tests run against an in-memory SQLite database via a `dependency_overrides` swap — no PostgreSQL instance is required.
+Tests use an in-memory SQLite override — no PostgreSQL needed.
 
 ## Docker
 
-Build and run with Docker:
-
 ```bash
-docker build -t cloudflow-backend .
-docker run -p 8080:8080 --env-file .env cloudflow-backend
+docker build -t backend .
+docker run -p 8080:8080 --env-file .env backend
 ```
 
-Or use Docker Compose from the repo root (recommended for the full stack) — see the root [README.md](../README.md).
+Or use Docker Compose from the repo root — see [README.md](../README.md).
