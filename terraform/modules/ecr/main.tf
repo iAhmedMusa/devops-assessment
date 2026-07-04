@@ -34,10 +34,15 @@ resource "aws_ecr_lifecycle_policy" "this" {
         rulePriority = 1
         description  = "Keep last 20 tagged images"
         selection = {
-          tagStatus     = "tagged"
-          tagPrefixList = ["v"]
-          countType     = "imageCountMoreThan"
-          countNumber   = 20
+          # Wildcard, NOT a "v" prefix: the pipeline strips the leading v
+          # from the git tag before pushing (deploy.yml derives
+          # version=${GITHUB_REF_NAME#v}, so images are tagged 0.2.1) and
+          # also pushes bare short-SHA tags. A "v" prefix would match
+          # nothing and this rule would silently never expire anything.
+          tagStatus      = "tagged"
+          tagPatternList = ["*"]
+          countType      = "imageCountMoreThan"
+          countNumber    = 20
         }
         action = {
           type = "expire"
