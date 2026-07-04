@@ -1,0 +1,20 @@
+# Single-node kind cluster with host ports 80/443 mapped to the node, so
+# ingress-nginx (kind provider manifest) is reachable from the runner
+# without a LoadBalancer.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
+    extraPortMappings:
+      - containerPort: 80
+        hostPort: 80
+        protocol: TCP
+      - containerPort: 443
+        hostPort: 443
+        protocol: TCP

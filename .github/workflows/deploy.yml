@@ -199,31 +199,73 @@ jobs:
             - `${{ secrets.DOCKERHUB_USERNAME }}/devops-assessment-frontend:${{ needs.build-and-push.outputs.version }}`
             - `${{ secrets.DOCKERHUB_USERNAME }}/devops-assessment-frontend:${{ needs.build-and-push.outputs.sha }}`
 
-  # MOCK JOB — no Kubernetes cluster exists yet. This echoes the commands
-  # a real staging deploy would run so the job graph and gating are
-  # already in place when the k8s manifests land.
+  # Real deploy onto an ephemeral kind cluster created inside the runner --
+  # it proves the manifests and the just-built images actually come up
+  # together, not just that the YAML parses. The cluster is created and
+  # destroyed within this job; nothing here is a persistent environment.
+  # A managed staging cluster (AKS/EKS) would replace kind with a kubectl
+  # context swap authenticated via OIDC -- the job graph and every step
+  # below stay the same.
   deploy-staging:
-    name: "[MOCK] Deploy to staging"
+    name: "Deploy to staging (kind)"
     needs: [release, build-and-push]
     if: success() && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     environment: staging
+    env:
+      VERSION: ${{ needs.build-and-push.outputs.version }}
+      NAMESPACE: devops-assessment-ci
     steps:
-      - name: Mock deploy to staging
-        env:
-          VERSION: ${{ needs.build-and-push.outputs.version }}
-        run: |
-          echo "MOCK ONLY — no cluster is configured, nothing below is executed."
-          echo
-          echo "kubectl set image deployment/backend backend=${{ secrets.DOCKERHUB_USERNAME }}/devops-assessment-backend:${VERSION} -n staging"
-          echo "kubectl set image deployment/frontend frontend=${{ secrets.DOCKERHUB_USERNAME }}/devops-assessment-frontend:${VERSION} -n staging"
-          echo "kubectl rollout status deployment/backend -n staging"
-          echo "kubectl rollout status deployment/frontend -n staging"
+      - uses: actions/checkout@v4
 
-      # A kind-cluster integration deploy job will replace this mock when
-      # the k8s manifests land (next phase). The real-world equivalent for
-      # a managed cluster is azure/k8s-deploy or kubectl against AKS/EKS,
-      # authenticated via OIDC (no stored cloud keys).
+      - name: Create kind cluster
+        uses: helm/kind-action@v1.14.0
+        with:
+          cluster_name: devops-assessment-ci
+          config: .github/kind/kind-config.yaml
+
+      - name: Install ingress-nginx
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.15.1/deploy/static/provider/kind/deploy.yaml
+          kubectl wait --namespace ingress-nginx \
+            --for=condition=ready pod \
+            --selector=app.kubernetes.io/component=controller \
+            --timeout=180s
+
+      - uses: imranismail/setup-kustomize@v3.0.0
+
+      - name: Pin overlay images to this release
+        working-directory: k8s/overlays/ci
+        run: |
+          kustomize edit set image \
+            "PLACEHOLDER/devops-assessment-backend=${{ secrets.DOCKERHUB_USERNAME }}/devops-assessment-backend:${VERSION}" \
+            "PLACEHOLDER/devops-assessment-frontend=${{ secrets.DOCKERHUB_USERNAME }}/devops-assessment-frontend:${VERSION}"
+
+      - name: Deploy manifests
+        run: kubectl apply -k k8s/overlays/ci
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/backend -n "$NAMESPACE" --timeout=180s
+          kubectl rollout status deployment/frontend -n "$NAMESPACE" --timeout=180s
+
+      - name: Smoke test — backend health from inside the cluster
+        run: |
+          kubectl exec -n "$NAMESPACE" deploy/frontend -- \
+            wget -qO- --timeout=5 http://backend:8080/health
+
+      - name: Smoke test — ingress reachable from the runner
+        run: |
+          curl --fail --resolve devops.localtest.me:80:127.0.0.1 \
+            http://devops.localtest.me/
+
+      - name: Dump diagnostics on failure
+        if: failure()
+        run: |
+          kubectl get pods -n "$NAMESPACE" -o wide
+          kubectl describe pods -n "$NAMESPACE"
+          kubectl logs -n "$NAMESPACE" -l app.kubernetes.io/component=backend --all-containers --tail=200
+          kubectl logs -n "$NAMESPACE" -l app.kubernetes.io/component=frontend --all-containers --tail=200
 
   # MOCK JOB — promotes the SAME immutable image tags built above into
   # production; no rebuild happens between environments. The pause for
@@ -248,8 +290,8 @@ jobs:
           echo "kubectl rollout status deployment/backend -n production"
           echo "kubectl rollout status deployment/frontend -n production"
 
-      # A kind-cluster integration deploy job will replace this mock when
-      # the k8s manifests land (next phase). The real-world equivalent for
-      # a managed cluster is azure/k8s-deploy or kubectl against AKS/EKS,
-      # authenticated via OIDC (no stored cloud keys) and gated by the
-      # GitHub environment's required-reviewer rule for production.
+      # Stays mocked: no real production cluster exists, and the point of
+      # this job is the required-reviewer gate on the "production"
+      # environment, not the deploy mechanics. A managed cluster would
+      # swap in azure/k8s-deploy or kubectl against AKS/EKS, authenticated
+      # via OIDC (no stored cloud keys) -- same job graph, same gate.
