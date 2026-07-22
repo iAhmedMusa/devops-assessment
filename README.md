@@ -139,7 +139,7 @@ Reviewers rarely run the code, so here's what a real run looks like.
 **Local cluster running**
 Two backend replicas, two frontend replicas, one postgres — all `Running` in `plinth-local`.
 
-![kubectl get all — local namespace](docs/proof/Screenshot%202026-07-04%20at%2011.07.11.png)
+![kubectl get all — local namespace](docs/evidence/Screenshot%202026-07-04%20at%2011.07.11.png)
 
 </td>
 <td width="33%">
@@ -147,7 +147,7 @@ Two backend replicas, two frontend replicas, one postgres — all `Running` in `
 **Full pipeline, all green**
 Test → build/push → mock ECR → release → staging deploy → mock production, 14m19s end to end.
 
-![Pipeline all jobs green](docs/proof/Screenshot%202026-07-04%20at%2011.28.47.png)
+![Pipeline all jobs green](docs/evidence/Screenshot%202026-07-04%20at%2011.28.47.png)
 
 </td>
 <td width="33%">
@@ -155,15 +155,15 @@ Test → build/push → mock ECR → release → staging deploy → mock product
 **Production approval gate**
 Pipeline paused — GitHub environment protection requesting a review before the production job runs.
 
-![Waiting for production review](docs/proof/Screenshot%202026-07-04%20at%2012.17.34.png)
+![Waiting for production review](docs/evidence/Screenshot%202026-07-04%20at%2012.17.34.png)
 
 </td>
 </tr>
 </table>
 
-Terraform: a real `plan` against `envs/dev.tfvars` — 59 resources to create, 0 to change, 0 to destroy, run with placeholder credentials and no live AWS account reachable (full output: [`docs/proof/tfplan-dev.txt`](docs/proof/tfplan-dev.txt)).
+Terraform: a real `plan` against `envs/dev.tfvars` — 59 resources to create, 0 to change, 0 to destroy, run with placeholder credentials and no live AWS account reachable (full output: [`docs/evidence/tfplan-dev.txt`](docs/evidence/tfplan-dev.txt)).
 
-More screenshots, build/scan artifacts, and the full breakdown: [`docs/proof.md`](docs/proof.md). Real CI run: [actions/runs/28698340896](https://github.com/iAhmedMusa/devops-assessment/actions/runs/28698340896) (v0.3.0). Latest release: [v0.3.0](https://github.com/iAhmedMusa/devops-assessment/releases/tag/v0.3.0).
+More screenshots, real Trivy scan findings, and the full breakdown: [`docs/evidence/`](docs/evidence/). Real CI run: [actions/runs/28698340896](https://github.com/iAhmedMusa/devops-assessment/actions/runs/28698340896) (v0.3.0). Latest release: [v0.3.0](https://github.com/iAhmedMusa/devops-assessment/releases/tag/v0.3.0).
 
 ## Documentation
 
@@ -179,7 +179,7 @@ More screenshots, build/scan artifacts, and the full breakdown: [`docs/proof.md`
 | Upgrades | [docs/operations/upgrades.md](docs/operations/upgrades.md) |
 | Architecture decisions | [docs/decisions/](docs/decisions/) |
 | Roadmap | [docs/roadmap.md](docs/roadmap.md) |
-| Proof of work | [docs/proof.md](docs/proof.md) |
+| Evidence | [docs/evidence/](docs/evidence/) |
 
 ## About the author
 
