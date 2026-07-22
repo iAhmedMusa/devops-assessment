@@ -2,12 +2,12 @@
 
 *The base layer your workloads stand on.*
 
-[![CI/CD](https://github.com/iAhmedMusa/devops-assessment/actions/workflows/deploy.yml/badge.svg)](https://github.com/iAhmedMusa/devops-assessment/actions/workflows/deploy.yml)
+[![CI/CD](https://github.com/iAhmedMusa/plinth/actions/workflows/deploy.yml/badge.svg)](https://github.com/iAhmedMusa/plinth/actions/workflows/deploy.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Terraform](https://img.shields.io/badge/terraform-%3E%3D1.7-623CE4?logo=terraform&logoColor=white)](terraform/)
 [![Kubernetes](https://img.shields.io/badge/kubernetes-1.30-326CE5?logo=kubernetes&logoColor=white)](k8s/)
 [![Trivy scanned](https://img.shields.io/badge/scanned%20with-Trivy-1904DA)](docs/decisions/0006-multi-arch-images-and-trivy-gate.md)
-[![Latest release](https://img.shields.io/github/v/release/iAhmedMusa/devops-assessment)](https://github.com/iAhmedMusa/devops-assessment/releases/latest)
+[![Latest release](https://img.shields.io/github/v/release/iAhmedMusa/plinth)](https://github.com/iAhmedMusa/plinth/releases/latest)
 
 Plinth is a production-shaped platform foundation on AWS: Terraform-provisioned VPC, EKS and RDS; Kustomize-managed workloads across four environments; and a release pipeline with OIDC federation, multi-arch builds, vulnerability gating, and a manual production approval gate. A small Next.js + FastAPI application rides on top as the workload under management — it exists to give the platform something real to carry.
 
@@ -163,7 +163,7 @@ Pipeline paused — GitHub environment protection requesting a review before the
 
 Terraform: a real `plan` against `envs/dev.tfvars` — 59 resources to create, 0 to change, 0 to destroy, run with placeholder credentials and no live AWS account reachable (full output: [`docs/evidence/tfplan-dev.txt`](docs/evidence/tfplan-dev.txt)).
 
-More screenshots, real Trivy scan findings, and the full breakdown: [`docs/evidence/`](docs/evidence/). Real CI run: [actions/runs/28698340896](https://github.com/iAhmedMusa/devops-assessment/actions/runs/28698340896) (v0.3.0). Latest release: [v0.3.0](https://github.com/iAhmedMusa/devops-assessment/releases/tag/v0.3.0).
+More screenshots, real Trivy scan findings, and the full breakdown: [`docs/evidence/`](docs/evidence/). Real CI run: [actions/runs/28698340896](https://github.com/iAhmedMusa/plinth/actions/runs/28698340896) (v0.3.0). Latest release: [v0.3.0](https://github.com/iAhmedMusa/plinth/releases/tag/v0.3.0).
 
 ## Documentation
 

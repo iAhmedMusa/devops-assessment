@@ -78,7 +78,7 @@ merge, all jobs passed, 14m 57s.
 
 ![Pipeline v0.3.0 — all jobs green](Screenshot%202026-07-04%20at%2013.11.00.png)
 
-Live links: [Actions run 28698340896](https://github.com/iAhmedMusa/devops-assessment/actions/runs/28698340896) (v0.3.0), [release v0.3.0](https://github.com/iAhmedMusa/devops-assessment/releases/tag/v0.3.0).
+Live links: [Actions run 28698340896](https://github.com/iAhmedMusa/plinth/actions/runs/28698340896) (v0.3.0), [release v0.3.0](https://github.com/iAhmedMusa/plinth/releases/tag/v0.3.0).
 
 ---
 
