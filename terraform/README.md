@@ -17,6 +17,28 @@ terraform/
   modules/{network,eks,ecr,rds,monitoring}/
 ```
 
+**Module dependency graph** (simplified from `terraform graph`, edges
+labeled with the actual output being passed):
+
+```mermaid
+flowchart LR
+    network["network"]
+    eks["eks"]
+    rds["rds"]
+    monitoring["monitoring"]
+    ecr["ecr"]
+
+    network -->|vpc_id, subnet_ids| eks
+    network -->|vpc_id, subnet_ids| rds
+    eks -->|node_security_group_id| rds
+    eks -->|cluster_name| monitoring
+    rds -->|db_instance_id| monitoring
+```
+
+`ecr` is fully independent — it only takes a name prefix and tags, never
+a network or cluster output, which is why it can be applied or destroyed
+without touching anything else.
+
 ## 1. How to use
 
 ```
@@ -137,7 +159,7 @@ actually deployed. State — remote or local — is never committed to git
 ## 6. dev/staging/production separation
 
 - **Separate state files.** Each environment's `envs/*.tfvars` pairs with
-  its own backend `key` (e.g. `devops-assessment/dev/terraform.tfstate`,
+  its own backend `key` (e.g. `plinth/dev/terraform.tfstate`,
   `.../staging/...`, `.../production/...`) in the same S3 bucket —
   distinct state, distinct lock, distinct blast radius (section 1).
 - **Separate AWS accounts is the real-world gold standard**, not just

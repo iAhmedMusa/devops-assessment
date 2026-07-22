@@ -23,19 +23,29 @@ flowchart LR
 
     subgraph vpc["VPC"]
         subgraph pub["public subnets (ALB / NAT only)"]
-            alb[ALB / ingress]
+            alb["ALB / ingress"]
         end
         subgraph app["private-app subnets (EKS nodes)"]
-            fe[frontend pod] --> be[backend pod]
+            fe["frontend pod"]
+            be["backend pod"]
         end
         subgraph db["private-db subnets (no NAT / IGW route)"]
-            rds[(RDS PostgreSQL)]
+            rds[("RDS PostgreSQL")]
         end
     end
 
-    alb --> fe
-    be -->|5432, SG-to-SG| rds
+    alb -->|"Ingress: frontend only"| fe
+    fe -->|"NetworkPolicy default-deny;\nallow frontend to backend only"| be
+    be -->|"5432, SG-to-SG +\nNetworkPolicy (backend-only)"| rds
 ```
+
+Every hop is annotated with what actually blocks unauthorized traffic
+there: the Ingress only routes to the frontend Service, the
+NetworkPolicy's default-deny posture means the backend accepts nothing
+except from frontend-labeled pods, and the database accepts nothing
+except backend-labeled pods over 5432 — enforced twice, once by the
+security group (which machines) and once by the NetworkPolicy (which
+workloads).
 
 The subnet tiers and their routing are defined in
 [`terraform/modules/network/main.tf`](../terraform/modules/network/main.tf):
@@ -70,7 +80,7 @@ trade-off note in
 ## 3. Private DNS requirement
 
 The RDS endpoint is a *hostname* (e.g.
-`devops-assessment-production-db.xxxx.ap-southeast-1.rds.amazonaws.com`),
+`plinth-production-db.xxxx.ap-southeast-1.rds.amazonaws.com`),
 not an IP. Inside the VPC it resolves through the VPC's Route 53 resolver
 to the instance's **private IP** — which works because the network module
 sets `enable_dns_support = true` and `enable_dns_hostnames = true` on the
@@ -171,7 +181,7 @@ Checklist, runnable against a real deployment:
 ```bash
 # 1. The instance itself says so
 aws rds describe-db-instances \
-  --db-instance-identifier devops-assessment-production-db \
+  --db-instance-identifier plinth-production-db \
   --query 'DBInstances[0].PubliclyAccessible'     # must be false
 
 # 2. Public DNS gives you nothing usable (run from outside the VPC)
