@@ -100,7 +100,7 @@ real kind cluster and runs smoke tests — see Task 2 evidence above.
 
 ## Task 4 — Private database connectivity
 
-See `docs/database-connectivity.md` for the full architecture. The
+See `docs/networking.md` for the full architecture. The
 screenshots above confirm the database runs inside the cluster as a
 ClusterIP service (`postgres  5432/TCP  <none>`), not exposed externally.
 
@@ -157,13 +157,13 @@ Notable from the plan:
 
 ## Task 6 — Troubleshooting
 
-See `docs/troubleshooting.md` — 15 real-world scenarios with diagnostic
+See `docs/operations/runbook.md` — 15 real-world scenarios with diagnostic
 commands and root-cause patterns.
 
 ---
 
 ## Task 7 — Future improvements
 
-See `docs/future-improvements.md` — 7 production hardening proposals
+See `docs/roadmap.md` — 7 production hardening proposals
 (HPA, GitOps, canary, logging, image signing, OPA Gatekeeper,
 multi-region DR) with what/why/how/risk-removed for each.
