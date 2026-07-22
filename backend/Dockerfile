@@ -1,14 +1,14 @@
 # Required environment variables:
 #   DATABASE_URL      e.g. postgresql+asyncpg://user:pass@db:5432/appdb
 #   FRONTEND_ORIGINS  comma-separated list of allowed CORS origins
-FROM python:3.12-slim AS builder
+FROM python:3.14-slim AS builder
 
 WORKDIR /app
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
-FROM python:3.12-slim AS runner
+FROM python:3.14-slim AS runner
 
 RUN groupadd --system --gid 1001 appuser \
     && useradd --system --uid 1001 --gid appuser appuser
